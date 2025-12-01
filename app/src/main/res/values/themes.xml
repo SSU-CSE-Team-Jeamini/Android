@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 전체 앱 테마 -->
+    <style name="Theme.JaeminiApp" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- 기본 색상 -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/primary_foreground</item>
+        <item name="colorOnBackground">@color/foreground</item>
+
+        <!-- 중요: MaterialComponents 위젯(Chip 등) 렌더링용 -->
+        <item name="material3:chipStyle">@style/Widget.Material3.Chip.Filter</item>
+        <item name="material3:chipChoiceStyle">@style/Widget.Material3.Chip.Choice</item>
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+
+</resources>
