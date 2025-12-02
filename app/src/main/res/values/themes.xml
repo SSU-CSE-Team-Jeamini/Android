@@ -9,8 +9,8 @@
         <item name="colorOnBackground">@color/foreground</item>
 
         <!-- 중요: MaterialComponents 위젯(Chip 등) 렌더링용 -->
-        <item name="material3:chipStyle">@style/Widget.Material3.Chip.Filter</item>
-        <item name="material3:chipChoiceStyle">@style/Widget.Material3.Chip.Choice</item>
+        <item name="chipStyle">@style/Widget.Material3.Chip.Filter</item>
+
         <item name="android:forceDarkAllowed">false</item>
     </style>
 

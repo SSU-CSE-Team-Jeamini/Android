@@ -18,6 +18,8 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 자동 로그인
         val token = TokenManager.getToken(this)
         if (token != null) {
             startActivity(Intent(this, MainActivity::class.java))
@@ -44,6 +46,9 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    /** ------------------------------------------
+     * 1) 서버 로그인 요청
+     * ------------------------------------------ */
     private fun sendLoginRequest(id: String, pw: String) {
         val request = LoginRequest(id, pw)
 
@@ -54,19 +59,34 @@ class LoginActivity : AppCompatActivity() {
                     call: Call<LoginResponse>,
                     response: Response<LoginResponse>
                 ) {
+                    // 서버가 응답하지 않음 → 더미 로그인 사용
                     if (!response.isSuccessful || response.body() == null) {
                         Toast.makeText(
                             this@LoginActivity,
-                            "서버 응답 없음 → 임시 로그인 진행",
+                            "서버 응답 없음 → 임시 로그인",
                             Toast.LENGTH_SHORT
                         ).show()
-                        moveToHome(id)
+                        useDummyLogin(id, pw)
                         return
                     }
 
                     val body = response.body()!!
+
                     if (body.status == "success") {
                         Toast.makeText(this@LoginActivity, "로그인 성공!", Toast.LENGTH_SHORT).show()
+
+                        TokenManager.saveToken(this@LoginActivity, body.token ?: "")
+
+                        // 서버 로그인 후에도 앱 내부 구조 맞추려고 저장
+                        DummyUserStore.currentUser = DummyUser(
+                            id = id,
+                            pw = pw,
+                            nickname = "사용자",
+                            weight = 70,
+                            totalCalorie = 0,
+                            totalPunch = 0
+                        )
+
                         moveToHome(id)
                     } else {
                         Toast.makeText(this@LoginActivity, "아이디 또는 비밀번호가 틀렸습니다", Toast.LENGTH_SHORT).show()
@@ -74,22 +94,56 @@ class LoginActivity : AppCompatActivity() {
                 }
 
                 override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
-                    // 서버가 아예 없거나 끊어져 있을 때 → 임시 로그인 허용
                     Toast.makeText(
                         this@LoginActivity,
                         "서버 연결 실패 → 임시 로그인",
                         Toast.LENGTH_SHORT
                     ).show()
 
-                    moveToHome(id)
+                    useDummyLogin(id, pw)
                 }
             })
     }
 
+    /** ------------------------------------------
+     * 2) 더미 로그인 (DummyUserStore 기준)
+     * ------------------------------------------ */
+    private fun useDummyLogin(id: String, pw: String) {
+
+        // ① 더미 리스트에서 계정 찾기
+        val matchedUser = DummyUserStore.getUser(id, pw)
+
+        // ② 있으면 그 계정 그대로 사용
+        if (matchedUser != null) {
+            DummyUserStore.currentUser = matchedUser
+            TokenManager.saveToken(this, "dummy-token")
+            moveToHome(matchedUser.id)
+            return
+        }
+
+        // ③ 없으면 입력값 기반으로 "임시 생성"
+        val newUser = DummyUser(
+            id = id,
+            pw = pw,
+            nickname = "${id}님",
+            weight = 70,
+            totalCalorie = 1000,
+            totalPunch = 200
+        )
+
+        DummyUserStore.currentUser = newUser
+        TokenManager.saveToken(this, "dummy-token")
+
+        moveToHome(newUser.id)
+    }
+
+    /** ------------------------------------------
+     * 3) 메인 화면 이동
+     * ------------------------------------------ */
     private fun moveToHome(id: String) {
-        val intent = Intent(this, MainActivity::class.java)  // ← HomeFragment → MainActivity로 변경!
+        val intent = Intent(this, MainActivity::class.java)
         intent.putExtra("username", id)
         startActivity(intent)
-        finish()  // LoginActivity 종료
+        finish()
     }
 }
