@@ -19,7 +19,7 @@ class LoginActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 자동 로그인
+        // 자동 로그인 체크
         val token = TokenManager.getToken(this)
         if (token != null) {
             startActivity(Intent(this, MainActivity::class.java))
@@ -75,7 +75,8 @@ class LoginActivity : AppCompatActivity() {
                     if (body.status == "success") {
                         Toast.makeText(this@LoginActivity, "로그인 성공!", Toast.LENGTH_SHORT).show()
 
-                        TokenManager.saveToken(this@LoginActivity, body.token ?: "")
+                        TokenManager.saveToken(this@LoginActivity, body.token ?: "server-token")
+                        TokenManager.saveUserId(this@LoginActivity, id)
 
                         // 서버 로그인 후에도 앱 내부 구조 맞추려고 저장
                         DummyUserStore.currentUser = DummyUser(
@@ -84,7 +85,8 @@ class LoginActivity : AppCompatActivity() {
                             nickname = "사용자",
                             weight = 70,
                             totalCalorie = 0,
-                            totalPunch = 0
+                            totalPunch = 0,
+                            totalDays = 0
                         )
 
                         moveToHome(id)
@@ -117,6 +119,8 @@ class LoginActivity : AppCompatActivity() {
         if (matchedUser != null) {
             DummyUserStore.currentUser = matchedUser
             TokenManager.saveToken(this, "dummy-token")
+            TokenManager.saveUserId(this, matchedUser.id)
+            Toast.makeText(this, "더미 계정으로 로그인: ${matchedUser.nickname}", Toast.LENGTH_SHORT).show()
             moveToHome(matchedUser.id)
             return
         }
@@ -128,11 +132,14 @@ class LoginActivity : AppCompatActivity() {
             nickname = "${id}님",
             weight = 70,
             totalCalorie = 1000,
-            totalPunch = 200
+            totalPunch = 200,
+            totalDays = 5
         )
 
         DummyUserStore.currentUser = newUser
         TokenManager.saveToken(this, "dummy-token")
+        TokenManager.saveUserId(this, newUser.id)
+        Toast.makeText(this, "새 임시 계정 생성: ${newUser.nickname}", Toast.LENGTH_SHORT).show()
 
         moveToHome(newUser.id)
     }

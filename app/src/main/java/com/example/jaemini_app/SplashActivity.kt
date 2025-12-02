@@ -2,6 +2,10 @@ package com.example.jaemini_app
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 class SplashActivity : AppCompatActivity() {
@@ -9,20 +13,66 @@ class SplashActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Splash 디자인 XML 적용
-        setContentView(R.layout.activity_splash)
+        Log.d("SplashActivity", "onCreate started")
 
-        // 자동 로그인 확인
-        val token = TokenManager.getToken(this)
-
-        if (token != null) {
-            // 로그인 유지됨 → 바로 메인 이동
-            startActivity(Intent(this, MainActivity::class.java))
-        } else {
-            // 로그인 필요 → 로그인 화면 이동
-            startActivity(Intent(this, LoginActivity::class.java))
+        try {
+            setContentView(R.layout.activity_splash)
+            Log.d("SplashActivity", "Layout loaded successfully")
+        } catch (e: Exception) {
+            Log.e("SplashActivity", "Layout loading failed", e)
+            Toast.makeText(this, "Layout error: ${e.message}", Toast.LENGTH_LONG).show()
         }
 
-        finish()   // 뒤로가기 방지
+        Handler(Looper.getMainLooper()).postDelayed({
+            try {
+                val token = TokenManager.getToken(this)
+                val userId = TokenManager.getUserId(this)
+
+                Log.d("SplashActivity", "Token: $token, UserId: $userId")
+
+                if (token != null && userId != null) {
+                    Log.d("SplashActivity", "User found, restoring...")
+                    restoreDummyUser(userId)
+
+                    val intent = Intent(this, MainActivity::class.java)
+                    intent.putExtra("username", userId)
+                    Log.d("SplashActivity", "Starting MainActivity")
+                    startActivity(intent)
+                } else {
+                    Log.d("SplashActivity", "No token, going to LoginActivity")
+                    startActivity(Intent(this, LoginActivity::class.java))
+                }
+
+                finish()
+            } catch (e: Exception) {
+                Log.e("SplashActivity", "Error during navigation", e)
+                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }, 1000)
+    }
+
+    private fun restoreDummyUser(userId: String) {
+        try {
+            Log.d("SplashActivity", "Restoring user: $userId")
+            val dummyUser = DummyUserStore.getUserById(userId)
+
+            if (dummyUser != null) {
+                DummyUserStore.currentUser = dummyUser
+                Log.d("SplashActivity", "User restored: ${dummyUser.nickname}")
+            } else {
+                DummyUserStore.currentUser = DummyUser(
+                    id = userId,
+                    pw = "",
+                    nickname = "${userId}님",
+                    weight = 70,
+                    totalCalorie = 1000,
+                    totalPunch = 200,
+                    totalDays = 5
+                )
+                Log.d("SplashActivity", "New user created: ${userId}님")
+            }
+        } catch (e: Exception) {
+            Log.e("SplashActivity", "Error restoring user", e)
+        }
     }
 }

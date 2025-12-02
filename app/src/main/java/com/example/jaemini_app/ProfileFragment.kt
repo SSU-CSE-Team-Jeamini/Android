@@ -49,7 +49,12 @@ class ProfileFragment : Fragment() {
     }
 
     private fun loadProfileData() {
-        // 서버에서 프로필 데이터 가져오기
+        val currentUser = DummyUserStore.currentUser
+        if (currentUser != null) {
+            updateUIWithDummyData(currentUser)
+            return
+        }
+
         RetrofitClient.api.getProfile()
             .enqueue(object : Callback<ProfileResponse> {
                 override fun onResponse(
@@ -79,30 +84,35 @@ class ProfileFragment : Fragment() {
             })
     }
 
+    private fun updateUIWithDummyData(user: DummyUser) {
+        tvUsername.text = user.nickname
+        tvProfileInitial.text = user.nickname.firstOrNull()?.toString() ?: "?"
+
+        tvTotalDays.text = "${user.totalDays}일"
+        tvTotalKcal.text = formatNumber(user.totalCalorie)
+        tvTotalPunch.text = "${formatNumber(user.totalPunch)}회"
+    }
+
     private fun updateUI(data: ProfileResponse) {
-        // 사용자 이름
         tvUsername.text = data.username
         tvProfileInitial.text = data.username.firstOrNull()?.toString() ?: "?"
 
-        // 통계 데이터
         tvTotalDays.text = "${data.totalDays}일"
         tvTotalKcal.text = formatNumber(data.totalKcal)
-        tvTotalPunch.text = formatNumber(data.totalPunch)
+        tvTotalPunch.text = "${formatNumber(data.totalPunch)}회"
     }
 
     private fun loadDefaultData() {
-        // 기본 데이터 (서버 연결 실패 시)
         val username = MainActivity.username ?: "사용자"
         tvUsername.text = username
         tvProfileInitial.text = username.firstOrNull()?.toString() ?: "?"
 
         tvTotalDays.text = "0일"
         tvTotalKcal.text = "0"
-        tvTotalPunch.text = "0"
+        tvTotalPunch.text = "0회"
     }
 
     private fun formatNumber(number: Int): String {
-        // 숫자를 천 단위 콤마로 포맷팅
         return String.format("%,d", number)
     }
 
@@ -117,11 +127,10 @@ class ProfileFragment : Fragment() {
             .setTitle("로그아웃")
             .setMessage("정말 로그아웃 하시겠습니까?")
             .setPositiveButton("예") { _, _ ->
-                // SharedPreferences 또는 세션 정보 삭제
                 TokenManager.clearToken(requireContext())
                 MainActivity.username = null
+                DummyUserStore.currentUser = null
 
-                // LoginActivity로 이동
                 val intent = Intent(requireActivity(), LoginActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 startActivity(intent)

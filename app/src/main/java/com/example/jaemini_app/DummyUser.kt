@@ -6,5 +6,6 @@ data class DummyUser(
     val nickname: String,
     val weight: Int,
     val totalCalorie: Int,
-    val totalPunch: Int
+    val totalPunch: Int,
+    val totalDays: Int  // 총 운동일 추가
 )
