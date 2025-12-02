@@ -49,12 +49,14 @@ class ProfileFragment : Fragment() {
     }
 
     private fun loadProfileData() {
+        // 더미 유저가 있으면 우선 사용
         val currentUser = DummyUserStore.currentUser
         if (currentUser != null) {
             updateUIWithDummyData(currentUser)
             return
         }
 
+        // 서버에서 프로필 데이터 가져오기
         RetrofitClient.api.getProfile()
             .enqueue(object : Callback<ProfileResponse> {
                 override fun onResponse(
@@ -85,6 +87,7 @@ class ProfileFragment : Fragment() {
     }
 
     private fun updateUIWithDummyData(user: DummyUser) {
+        // nickname 사용 (더미 데이터)
         tvUsername.text = user.nickname
         tvProfileInitial.text = user.nickname.firstOrNull()?.toString() ?: "?"
 
@@ -94,8 +97,9 @@ class ProfileFragment : Fragment() {
     }
 
     private fun updateUI(data: ProfileResponse) {
-        tvUsername.text = data.username
-        tvProfileInitial.text = data.username.firstOrNull()?.toString() ?: "?"
+        // 서버에서 받은 name 사용
+        tvUsername.text = data.name
+        tvProfileInitial.text = data.name.firstOrNull()?.toString() ?: "?"
 
         tvTotalDays.text = "${data.totalDays}일"
         tvTotalKcal.text = formatNumber(data.totalKcal)

@@ -75,23 +75,28 @@ class LoginActivity : AppCompatActivity() {
                     if (body.status == "success") {
                         Toast.makeText(this@LoginActivity, "로그인 성공!", Toast.LENGTH_SHORT).show()
 
+                        // 토큰 저장
                         TokenManager.saveToken(this@LoginActivity, body.token ?: "server-token")
                         TokenManager.saveUserId(this@LoginActivity, id)
 
-                        // 서버 로그인 후에도 앱 내부 구조 맞추려고 저장
+                        // 서버에서 받은 데이터로 DummyUser 생성
                         DummyUserStore.currentUser = DummyUser(
-                            id = id,
+                            id = body.username ?: id,
                             pw = pw,
-                            nickname = "사용자",
-                            weight = 70,
+                            nickname = body.name ?: "사용자",  // 서버의 name 필드 사용
+                            weight = 70,  // 기본값 (서버에서 weight를 주지 않으면)
                             totalCalorie = 0,
                             totalPunch = 0,
                             totalDays = 0
                         )
 
-                        moveToHome(id)
+                        moveToHome(body.username ?: id)
                     } else {
-                        Toast.makeText(this@LoginActivity, "아이디 또는 비밀번호가 틀렸습니다", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@LoginActivity,
+                            "아이디 또는 비밀번호가 틀렸습니다",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
 
@@ -120,7 +125,11 @@ class LoginActivity : AppCompatActivity() {
             DummyUserStore.currentUser = matchedUser
             TokenManager.saveToken(this, "dummy-token")
             TokenManager.saveUserId(this, matchedUser.id)
-            Toast.makeText(this, "더미 계정으로 로그인: ${matchedUser.nickname}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "더미 계정으로 로그인: ${matchedUser.nickname}",
+                Toast.LENGTH_SHORT
+            ).show()
             moveToHome(matchedUser.id)
             return
         }
@@ -139,7 +148,11 @@ class LoginActivity : AppCompatActivity() {
         DummyUserStore.currentUser = newUser
         TokenManager.saveToken(this, "dummy-token")
         TokenManager.saveUserId(this, newUser.id)
-        Toast.makeText(this, "새 임시 계정 생성: ${newUser.nickname}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            this,
+            "새 임시 계정 생성: ${newUser.nickname}",
+            Toast.LENGTH_SHORT
+        ).show()
 
         moveToHome(newUser.id)
     }
