@@ -60,11 +60,16 @@ class SplashActivity : AppCompatActivity() {
                 DummyUserStore.currentUser = dummyUser
                 Log.d("SplashActivity", "User restored: ${dummyUser.nickname}")
             } else {
+                // ✅ 수정: height 추가, weight를 Float로 변경
                 DummyUserStore.currentUser = DummyUser(
                     id = userId,
                     pw = "",
                     nickname = "${userId}님",
-                    weight = 70,
+                    birth = null,
+                    age = null,
+                    height = 175.0f,        // ✅ 추가 (Float)
+                    weight = 70.0f,         // ✅ Float로 변경 (70 → 70.0f)
+                    gender = null,
                     totalCalorie = 1000,
                     totalPunch = 200,
                     totalDays = 5

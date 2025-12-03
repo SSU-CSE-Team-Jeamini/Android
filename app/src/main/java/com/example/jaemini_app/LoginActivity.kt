@@ -57,12 +57,12 @@ class LoginActivity : AppCompatActivity() {
                     response: Response<LoginResponse>
                 ) {
                     if (!response.isSuccessful || response.body() == null) {
+                        // ❌ 서버 오류 - 로그인 차단
                         Toast.makeText(
                             this@LoginActivity,
-                            "서버 응답 없음 → 임시 로그인",
-                            Toast.LENGTH_SHORT
+                            "서버 연결 오류입니다. 잠시 후 다시 시도해주세요.",
+                            Toast.LENGTH_LONG
                         ).show()
-                        useDummyLogin(id, pw)
                         return
                     }
 
@@ -72,13 +72,12 @@ class LoginActivity : AppCompatActivity() {
                     if (body.success == true) {
                         Toast.makeText(this@LoginActivity, "로그인 성공!", Toast.LENGTH_SHORT).show()
 
-                        // 토큰 저장 (서버가 토큰을 안 보내주면 더미 토큰 사용)
+                        // 토큰 저장
                         val token = body.token ?: "server-token-${System.currentTimeMillis()}"
                         TokenManager.saveToken(this@LoginActivity, token)
                         TokenManager.saveUserId(this@LoginActivity, body.username ?: id)
 
                         // ✅ 서버에서 받은 데이터로 DummyUser 생성
-                        // 프로필 정보는 나중에 /api/users/profile에서 가져옴
                         DummyUserStore.currentUser = DummyUser(
                             id = body.username ?: id,
                             pw = pw,
@@ -95,71 +94,25 @@ class LoginActivity : AppCompatActivity() {
 
                         moveToHome(body.username ?: id)
                     } else {
+                        // ❌ 로그인 실패 - 로그인 차단
                         val errorMessage = body.message ?: "아이디 또는 비밀번호가 틀렸습니다"
                         Toast.makeText(
                             this@LoginActivity,
-                            "$errorMessage → 임시 로그인",
-                            Toast.LENGTH_SHORT
+                            errorMessage,
+                            Toast.LENGTH_LONG
                         ).show()
-                        useDummyLogin(id, pw)
                     }
                 }
 
                 override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
+                    // ❌ 네트워크 오류 - 로그인 차단
                     Toast.makeText(
                         this@LoginActivity,
-                        "서버 연결 실패 → 임시 로그인",
-                        Toast.LENGTH_SHORT
+                        "네트워크 연결 오류입니다.\n인터넷 연결을 확인해주세요.",
+                        Toast.LENGTH_LONG
                     ).show()
-
-                    useDummyLogin(id, pw)
                 }
             })
-    }
-
-    private fun useDummyLogin(id: String, pw: String) {
-        // ① 더미 리스트에서 계정 찾기
-        val matchedUser = DummyUserStore.getUser(id, pw)
-
-        // ② 있으면 그 계정 그대로 사용
-        if (matchedUser != null) {
-            DummyUserStore.currentUser = matchedUser
-            TokenManager.saveToken(this, "dummy-token")
-            TokenManager.saveUserId(this, matchedUser.id)
-            Toast.makeText(
-                this,
-                "더미 계정으로 로그인: ${matchedUser.nickname}",
-                Toast.LENGTH_SHORT
-            ).show()
-            moveToHome(matchedUser.id)
-            return
-        }
-
-        // ③ 없으면 입력값 기반으로 "임시 생성"
-        val newUser = DummyUser(
-            id = id,
-            pw = pw,
-            nickname = "${id}님",
-            birth = null,
-            age = null,
-            height = 175.0f,
-            weight = 70.0f,
-            gender = null,
-            totalCalorie = 1000,
-            totalPunch = 200,
-            totalDays = 5
-        )
-
-        DummyUserStore.currentUser = newUser
-        TokenManager.saveToken(this, "dummy-token")
-        TokenManager.saveUserId(this, newUser.id)
-        Toast.makeText(
-            this,
-            "새 임시 계정 생성: ${newUser.nickname}",
-            Toast.LENGTH_SHORT
-        ).show()
-
-        moveToHome(newUser.id)
     }
 
     private fun moveToHome(id: String) {

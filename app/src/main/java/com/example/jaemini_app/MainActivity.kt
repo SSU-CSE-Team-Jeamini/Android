@@ -8,9 +8,18 @@ import androidx.navigation.NavController
 
 class MainActivity : AppCompatActivity() {
 
-    // username 변수 추가! (companion object 사용)
     companion object {
         var username: String? = null
+
+        // ✅ 캐시 추가
+        var cachedProfile: ProfileData? = null
+        var cacheTimestamp: Long = 0
+
+        // ✅ 캐시 유효성 확인 (1분)
+        fun isCacheValid(): Boolean {
+            val now = System.currentTimeMillis()
+            return cachedProfile != null && (now - cacheTimestamp) < 60000
+        }
     }
 
     private lateinit var navController: NavController
@@ -19,7 +28,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Intent로 전달받은 username 저장
         username = intent.getStringExtra("username")
 
         setupNavigation()
@@ -51,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         navMypage.setOnClickListener {
-            if (navController.currentDestination?.id != R.id.profileFragment) {
+            if (navController.currentDestination?.id != R.id.nav_mypage) {
                 navController.navigate(R.id.profileFragment)
             }
         }

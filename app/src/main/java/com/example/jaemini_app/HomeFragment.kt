@@ -2,6 +2,7 @@ package com.example.jaemini_app
 
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -110,7 +111,16 @@ class HomeFragment : Fragment() {
             return
         }
 
+        // ✅ 캐시 확인 (1분 이내면 캐시 사용)
+        if (MainActivity.isCacheValid()) {
+            Log.d("HomeFragment", "캐시 사용: ${MainActivity.cachedProfile?.totalKcal}kcal")
+            updateUIWithServerData(MainActivity.cachedProfile!!)
+            loadGraphData(TabType.CALORIE)
+            return
+        }
+
         // 서버에서 프로필 데이터 가져오기
+        Log.d("HomeFragment", "서버 API 호출: $currentUsername")
         RetrofitClient.api.getProfile(currentUsername!!)
             .enqueue(object : Callback<ProfileResponse> {
                 override fun onResponse(
@@ -122,6 +132,12 @@ class HomeFragment : Fragment() {
 
                         if (body.status == "success" || body.status == null) {
                             val profileData = body.getActualData()
+
+                            // ✅ 캐시 저장
+                            MainActivity.cachedProfile = profileData
+                            MainActivity.cacheTimestamp = System.currentTimeMillis()
+
+                            Log.d("HomeFragment", "서버 데이터: ${profileData.totalKcal}kcal (캐시 저장됨)")
                             updateUIWithServerData(profileData)
                         } else {
                             loadDummyDataAsFallback()
@@ -204,12 +220,12 @@ class HomeFragment : Fragment() {
 
     private fun loadDummyGraphData(type: TabType) {
         val dummy = listOf(
-            GraphData("2024-10-26", 300f),
-            GraphData("2024-10-27", 270f),
-            GraphData("2024-10-29", 380f),
-            GraphData("2024-10-31", 460f),
-            GraphData("2024-11-03", 410f),
-            GraphData("2024-11-08", 530f)
+            GraphData("2025-10-26", 300f),
+            GraphData("2025-10-27", 270f),
+            GraphData("2025-10-29", 380f),
+            GraphData("2025-10-31", 460f),
+            GraphData("2025-11-03", 410f),
+            GraphData("2025-11-08", 530f)
         )
 
         updateGraph(dummy, type)
@@ -272,13 +288,16 @@ class HomeFragment : Fragment() {
         }
 
         chart.axisRight.isEnabled = false
-        chart.axisLeft.textSize = 12f
-        chart.axisLeft.setDrawGridLines(true)
-        chart.axisLeft.gridColor = Color.parseColor("#DDDDDD")
+        chart.axisLeft.apply {
+            textSize = 12f
+            setDrawGridLines(true)
+            gridColor = Color.parseColor("#DDDDDD")
 
-        if (type == TabType.RANK) {
-            chart.axisLeft.axisMinimum = 0f
-            chart.axisLeft.axisMaximum = 100f
+            if (type == TabType.RANK) {
+                axisMinimum = 0f
+                axisMaximum = 100f
+                isInverted = true   // ← ← 🔥 y축 반전
+            }
         }
 
         chart.description.isEnabled = false

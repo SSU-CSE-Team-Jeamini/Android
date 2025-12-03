@@ -3,6 +3,7 @@ package com.example.jaemini_app
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -56,7 +57,15 @@ class ProfileFragment : Fragment() {
             return
         }
 
+        // ✅ 캐시 확인 (1분 이내면 캐시 사용)
+        if (MainActivity.isCacheValid()) {
+            Log.d("ProfileFragment", "캐시 사용: ${MainActivity.cachedProfile?.totalKcal}kcal")
+            updateUIWithServerData(MainActivity.cachedProfile!!)
+            return
+        }
+
         // 서버에서 프로필 데이터 가져오기
+        Log.d("ProfileFragment", "서버 API 호출: $username")
         RetrofitClient.api.getProfile(username)
             .enqueue(object : Callback<ProfileResponse> {
                 override fun onResponse(
@@ -73,6 +82,12 @@ class ProfileFragment : Fragment() {
 
                     if (body.status == "success" || body.status == null) {
                         val profileData = body.getActualData()
+
+                        // ✅ 캐시 저장
+                        MainActivity.cachedProfile = profileData
+                        MainActivity.cacheTimestamp = System.currentTimeMillis()
+
+                        Log.d("ProfileFragment", "서버 데이터: ${profileData.totalKcal}kcal (캐시 저장됨)")
                         updateUIWithServerData(profileData)
                     } else {
                         showError(body.message ?: "프로필 로드 실패")
@@ -139,6 +154,7 @@ class ProfileFragment : Fragment() {
             .setPositiveButton("예") { _, _ ->
                 TokenManager.clearToken(requireContext())
                 MainActivity.username = null
+                MainActivity.cachedProfile = null  // ✅ 캐시 초기화
                 DummyUserStore.currentUser = null
 
                 val intent = Intent(requireActivity(), LoginActivity::class.java)
