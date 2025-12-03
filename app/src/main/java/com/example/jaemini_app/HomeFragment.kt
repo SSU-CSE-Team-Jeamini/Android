@@ -27,12 +27,12 @@ class HomeFragment : Fragment() {
     private lateinit var tvPlaceholder: TextView
     private lateinit var graphContainer: FrameLayout
 
-    // 통계 TextView들
     private lateinit var tvCalorie: TextView
-    private lateinit var tvPunch: TextView  // 이제 키로 표시
+    private lateinit var tvHeight: TextView
     private lateinit var tvWeight: TextView
 
     private var currentTabType: TabType = TabType.CALORIE
+    private var currentUsername: String? = null
 
     enum class TabType {
         CALORIE, PUNCH, RANK
@@ -63,7 +63,7 @@ class HomeFragment : Fragment() {
         graphContainer = view.findViewById(R.id.graph_container)
 
         tvCalorie = view.findViewById(R.id.tv_calorie)
-        tvPunch = view.findViewById(R.id.tv_punch)  // 키 데이터
+        tvHeight = view.findViewById(R.id.tv_punch)
         tvWeight = view.findViewById(R.id.tv_weight)
     }
 
@@ -102,75 +102,107 @@ class HomeFragment : Fragment() {
     }
 
     private fun loadHomeData() {
-        // 더미 유저가 있으면 우선 사용
-        val currentUser = DummyUserStore.currentUser
-        if (currentUser != null) {
-            updateUIWithDummyData(currentUser)
+        currentUsername = MainActivity.username ?: TokenManager.getUserId(requireContext())
+
+        if (currentUsername == null) {
+            setDefaultValues()
             loadGraphData(TabType.CALORIE)
             return
         }
 
-        // 서버에서 데이터 가져오기
-        RetrofitClient.api.getProfile()
+        // 서버에서 프로필 데이터 가져오기
+        RetrofitClient.api.getProfile(currentUsername!!)
             .enqueue(object : Callback<ProfileResponse> {
                 override fun onResponse(
                     call: Call<ProfileResponse>,
                     response: Response<ProfileResponse>
                 ) {
                     if (response.isSuccessful && response.body() != null) {
-                        val data = response.body()!!
-                        updateUIWithServerData(data)
+                        val body = response.body()!!
+
+                        if (body.status == "success" || body.status == null) {
+                            val profileData = body.getActualData()
+                            updateUIWithServerData(profileData)
+                        } else {
+                            loadDummyDataAsFallback()
+                        }
                     } else {
-                        // 실패 시 기본값
-                        setDefaultValues()
+                        loadDummyDataAsFallback()
                     }
                     loadGraphData(TabType.CALORIE)
                 }
 
                 override fun onFailure(call: Call<ProfileResponse>, t: Throwable) {
-                    // 네트워크 실패 시 기본값
-                    setDefaultValues()
+                    loadDummyDataAsFallback()
                     loadGraphData(TabType.CALORIE)
                 }
             })
     }
 
-    private fun updateUIWithDummyData(user: DummyUser) {
-        // 칼로리: 총 칼로리 표시
-        tvCalorie.text = "${user.totalCalorie}kcal"
-
-        // 키: height가 있으면 표시, 없으면 기본값
-        val height = user.height ?: 170.0f
-        tvPunch.text = "${height.toInt()}cm"
-
-        // 체중
-        tvWeight.text = "${user.weight}kg"
+    private fun updateUIWithServerData(data: ProfileData) {
+        tvCalorie.text = "${data.totalKcal}kcal"
+        tvHeight.text = "${data.height.toInt()}cm"
+        tvWeight.text = "${data.weight.toInt()}kg"
     }
 
-    private fun updateUIWithServerData(data: ProfileResponse) {
-        // 칼로리
-        tvCalorie.text = "${data.totalKcal}kcal"
-
-        // 키: 서버에서 height 데이터 사용
-        val height = data.height ?: 170.0f
-        tvPunch.text = "${height.toInt()}cm"
-
-        // 체중
-        val weight = data.weight ?: 70.0f
-        tvWeight.text = "${weight.toInt()}kg"
+    private fun loadDummyDataAsFallback() {
+        val currentUser = DummyUserStore.currentUser
+        if (currentUser != null) {
+            tvCalorie.text = "${currentUser.totalCalorie}kcal"
+            tvHeight.text = "${currentUser.height.toInt()}cm"
+            tvWeight.text = "${currentUser.weight.toInt()}kg"
+            Toast.makeText(requireContext(), "서버 연결 실패 - 임시 데이터 사용", Toast.LENGTH_SHORT).show()
+        } else {
+            setDefaultValues()
+        }
     }
 
     private fun setDefaultValues() {
         tvCalorie.text = "0kcal"
-        tvPunch.text = "170cm"
+        tvHeight.text = "170cm"
         tvWeight.text = "70kg"
     }
 
     private fun loadGraphData(type: TabType) {
+        if (currentUsername == null) {
+            loadDummyGraphData(type)
+            return
+        }
 
-        // -------------------------
-        // 🔥 더미 그래프 데이터
-        // -------------------------
+        val endpoint = when (type) {
+            TabType.CALORIE -> "calorie"
+            TabType.PUNCH -> "punch"
+            TabType.RANK -> "rank"
+        }
+
+        RetrofitClient.api.getGraphData(endpoint, currentUsername!!, "week")
+            .enqueue(object : Callback<GraphResponse> {
+                override fun onResponse(
+                    call: Call<GraphResponse>,
+                    response: Response<GraphResponse>
+                ) {
+                    if (response.isSuccessful && response.body() != null) {
+                        val body = response.body()!!
+
+                        if (body.status == "success" || body.status == null) {
+                            val graphData = body.getActualGraphData()
+                            if (graphData.isNotEmpty()) {
+                                updateGraph(graphData, type)
+                                return
+                            }
+                        }
+                    }
+
+                    loadDummyGraphData(type)
+                }
+
+                override fun onFailure(call: Call<GraphResponse>, t: Throwable) {
+                    loadDummyGraphData(type)
+                }
+            })
+    }
+
+    private fun loadDummyGraphData(type: TabType) {
         val dummy = listOf(
             GraphData("2024-10-26", 300f),
             GraphData("2024-10-27", 270f),
@@ -180,11 +212,11 @@ class HomeFragment : Fragment() {
             GraphData("2024-11-08", 530f)
         )
 
-        val response = GraphResponse(type.name.lowercase(), dummy)
-        updateGraph(response, type)
+        updateGraph(dummy, type)
+        Toast.makeText(requireContext(), "서버 연결 실패 - 임시 그래프 사용", Toast.LENGTH_SHORT).show()
     }
 
-    private fun updateGraph(data: GraphResponse, type: TabType) {
+    private fun updateGraph(data: List<GraphData>, type: TabType) {
         tvPlaceholder.visibility = View.GONE
         graphContainer.removeAllViews()
 
@@ -196,15 +228,11 @@ class HomeFragment : Fragment() {
         }
         graphContainer.addView(chart)
 
-        val entries = data.data.mapIndexed { index, item ->
+        val entries = data.mapIndexed { index, item ->
             Entry(index.toFloat(), item.value)
         }
 
-        val colorMain = when (type) {
-            TabType.CALORIE -> Color.parseColor("#205825") // green
-            TabType.PUNCH -> Color.parseColor("#205825")   // blue
-            TabType.RANK -> Color.parseColor("#205825")    // orange
-        }
+        val colorMain = Color.parseColor("#205825")
 
         val dataSet = LineDataSet(entries, "").apply {
             color = colorMain
@@ -226,7 +254,7 @@ class HomeFragment : Fragment() {
 
         chart.data = LineData(dataSet)
 
-        val labels = data.data.map { it.date }
+        val labels = data.map { it.date }
 
         chart.xAxis.apply {
             position = XAxis.XAxisPosition.BOTTOM
@@ -236,7 +264,9 @@ class HomeFragment : Fragment() {
             valueFormatter = object : ValueFormatter() {
                 override fun getFormattedValue(value: Float): String {
                     val idx = value.toInt()
-                    return if (idx in labels.indices) labels[idx].substring(5) else ""
+                    return if (idx in labels.indices) {
+                        labels[idx].substring(5)
+                    } else ""
                 }
             }
         }
@@ -256,9 +286,5 @@ class HomeFragment : Fragment() {
         chart.setTouchEnabled(false)
 
         chart.animateX(700)
-    }
-
-    private fun showError(message: String) {
-        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 }

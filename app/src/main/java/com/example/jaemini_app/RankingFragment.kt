@@ -40,14 +40,23 @@ class RankingFragment : Fragment() {
         tvMyPercent = view.findViewById(R.id.tv_my_percent)
         recyclerView = view.findViewById(R.id.recycler_ranking)
 
-        // RecyclerView 설정
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         rankingAdapter = RankingAdapter()
         recyclerView.adapter = rankingAdapter
     }
 
     private fun loadRankingData() {
-        RetrofitClient.api.getRanking()
+        // username 가져오기
+        val username = MainActivity.username ?: TokenManager.getUserId(requireContext())
+
+        if (username == null) {
+            Toast.makeText(requireContext(), "사용자 정보 없음", Toast.LENGTH_SHORT).show()
+            loadDummyData()
+            return
+        }
+
+        // 서버에서 랭킹 데이터 가져오기
+        RetrofitClient.api.getRanking(username)
             .enqueue(object : Callback<RankingResponse> {
                 override fun onResponse(
                     call: Call<RankingResponse>,
@@ -55,31 +64,41 @@ class RankingFragment : Fragment() {
                 ) {
                     if (!response.isSuccessful) {
                         showError("서버 오류: ${response.code()}")
-                        loadDummyData()  // ✅ 더미 데이터 로드
+                        loadDummyData()
                         return
                     }
 
                     val body = response.body()
                     if (body == null) {
                         showError("데이터가 없습니다")
-                        loadDummyData()  // ✅ 더미 데이터 로드
+                        loadDummyData()
                         return
                     }
 
-                    updateUI(body)
+                    // status 확인
+                    if (body.status == "success" || body.status == null) {
+                        // getActualData() 메서드로 데이터 가져오기
+                        val rankingData = body.getActualData()
+                        updateUI(rankingData)
+                    } else {
+                        showError(body.message ?: "랭킹 로드 실패")
+                        loadDummyData()
+                    }
                 }
 
                 override fun onFailure(call: Call<RankingResponse>, t: Throwable) {
                     showError("네트워크 오류: ${t.message}")
-                    loadDummyData()  // ✅ 더미 데이터 로드
+                    loadDummyData()
                 }
             })
     }
 
-    private fun updateUI(data: RankingResponse) {
-        tvMyRankValue.text = "${data.my_rank}위"
-        tvMyPercent.text = "상위 ${data.my_percent}%"
+    private fun updateUI(data: RankingData) {
+        // 내 순위 표시
+        tvMyRankValue.text = "${data.myRank}위"
+        tvMyPercent.text = "상위 ${data.myPercent}%"
 
+        // 전체 랭킹 리스트 (top3 + list)
         val allRankings = mutableListOf<RankingItem>()
         allRankings.addAll(data.top3)
         allRankings.addAll(data.list)
@@ -87,25 +106,19 @@ class RankingFragment : Fragment() {
         rankingAdapter.submitList(allRankings)
     }
 
-    // ✅ 더미 데이터 로드 함수 추가
     private fun loadDummyData() {
-        // 내 순위 표시
+        // 더미 데이터 (서버 연결 실패 시에만 사용)
         val currentUser = DummyUserStore.currentUser
-        val myRank = if (currentUser != null) {
-            when (currentUser.id) {
-                "test" -> 4
-                "ssu" -> 6
-                "gm" -> 1
-                else -> 10
-            }
-        } else {
-            10
+        val myRank = when (currentUser?.id) {
+            "test" -> 4
+            "ssu" -> 6
+            "gm" -> 1
+            else -> 10
         }
 
         tvMyRankValue.text = "${myRank}위"
         tvMyPercent.text = "상위 ${(myRank * 10)}%"
 
-        // 더미 랭킹 데이터
         val dummyRankings = listOf(
             RankingItem(1, "경민", 1500, 500),
             RankingItem(2, "김철수", 1350, 450),
@@ -121,7 +134,7 @@ class RankingFragment : Fragment() {
 
         Toast.makeText(
             requireContext(),
-            "더미 랭킹 데이터 표시 중",
+            "서버 연결 실패 - 임시 데이터 사용",
             Toast.LENGTH_SHORT
         ).show()
     }

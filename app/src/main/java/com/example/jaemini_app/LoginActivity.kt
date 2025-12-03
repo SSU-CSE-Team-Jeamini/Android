@@ -46,9 +46,6 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    /** ------------------------------------------
-     * 1) 서버 로그인 요청
-     * ------------------------------------------ */
     private fun sendLoginRequest(id: String, pw: String) {
         val request = LoginRequest(id, pw)
 
@@ -59,7 +56,6 @@ class LoginActivity : AppCompatActivity() {
                     call: Call<LoginResponse>,
                     response: Response<LoginResponse>
                 ) {
-                    // 서버가 응답하지 않음 → 더미 로그인 사용
                     if (!response.isSuccessful || response.body() == null) {
                         Toast.makeText(
                             this@LoginActivity,
@@ -72,20 +68,26 @@ class LoginActivity : AppCompatActivity() {
 
                     val body = response.body()!!
 
-                    if (body.status == "success") {
+                    // ✅ 서버는 "success" 필드 사용
+                    if (body.success == true) {
                         Toast.makeText(this@LoginActivity, "로그인 성공!", Toast.LENGTH_SHORT).show()
 
-                        // 토큰 저장
-                        TokenManager.saveToken(this@LoginActivity, body.token ?: "server-token")
-                        TokenManager.saveUserId(this@LoginActivity, id)
+                        // 토큰 저장 (서버가 토큰을 안 보내주면 더미 토큰 사용)
+                        val token = body.token ?: "server-token-${System.currentTimeMillis()}"
+                        TokenManager.saveToken(this@LoginActivity, token)
+                        TokenManager.saveUserId(this@LoginActivity, body.username ?: id)
 
-                        // 서버에서 받은 데이터로 DummyUser 생성
+                        // ✅ 서버에서 받은 데이터로 DummyUser 생성
+                        // 프로필 정보는 나중에 /api/users/profile에서 가져옴
                         DummyUserStore.currentUser = DummyUser(
                             id = body.username ?: id,
                             pw = pw,
-                            nickname = body.name ?: "사용자",  // 서버의 name 필드 사용
-                            weight = 70,  // 기본값 (서버에서 weight를 주지 않으면)
+                            nickname = body.name ?: "사용자",
+                            birth = null,
+                            age = null,
                             height = 175.0f,
+                            weight = 70.0f,
+                            gender = null,
                             totalCalorie = 0,
                             totalPunch = 0,
                             totalDays = 0
@@ -93,11 +95,13 @@ class LoginActivity : AppCompatActivity() {
 
                         moveToHome(body.username ?: id)
                     } else {
+                        val errorMessage = body.message ?: "아이디 또는 비밀번호가 틀렸습니다"
                         Toast.makeText(
                             this@LoginActivity,
-                            "아이디 또는 비밀번호가 틀렸습니다",
+                            "$errorMessage → 임시 로그인",
                             Toast.LENGTH_SHORT
                         ).show()
+                        useDummyLogin(id, pw)
                     }
                 }
 
@@ -113,11 +117,7 @@ class LoginActivity : AppCompatActivity() {
             })
     }
 
-    /** ------------------------------------------
-     * 2) 더미 로그인 (DummyUserStore 기준)
-     * ------------------------------------------ */
     private fun useDummyLogin(id: String, pw: String) {
-
         // ① 더미 리스트에서 계정 찾기
         val matchedUser = DummyUserStore.getUser(id, pw)
 
@@ -140,7 +140,11 @@ class LoginActivity : AppCompatActivity() {
             id = id,
             pw = pw,
             nickname = "${id}님",
-            weight = 70,
+            birth = null,
+            age = null,
+            height = 175.0f,
+            weight = 70.0f,
+            gender = null,
             totalCalorie = 1000,
             totalPunch = 200,
             totalDays = 5
@@ -158,9 +162,6 @@ class LoginActivity : AppCompatActivity() {
         moveToHome(newUser.id)
     }
 
-    /** ------------------------------------------
-     * 3) 메인 화면 이동
-     * ------------------------------------------ */
     private fun moveToHome(id: String) {
         val intent = Intent(this, MainActivity::class.java)
         intent.putExtra("username", id)

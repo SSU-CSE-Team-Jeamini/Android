@@ -49,61 +49,67 @@ class ProfileFragment : Fragment() {
     }
 
     private fun loadProfileData() {
-        // 더미 유저가 있으면 우선 사용
-        val currentUser = DummyUserStore.currentUser
-        if (currentUser != null) {
-            updateUIWithDummyData(currentUser)
+        val username = MainActivity.username ?: TokenManager.getUserId(requireContext())
+
+        if (username == null) {
+            loadDefaultData()
             return
         }
 
         // 서버에서 프로필 데이터 가져오기
-        RetrofitClient.api.getProfile()
+        RetrofitClient.api.getProfile(username)
             .enqueue(object : Callback<ProfileResponse> {
                 override fun onResponse(
                     call: Call<ProfileResponse>,
                     response: Response<ProfileResponse>
                 ) {
-                    if (!response.isSuccessful) {
+                    if (!response.isSuccessful || response.body() == null) {
                         showError("서버 오류: ${response.code()}")
-                        loadDefaultData()
+                        loadDummyDataAsFallback()
                         return
                     }
 
-                    val body = response.body()
-                    if (body == null) {
-                        showError("데이터가 없습니다")
-                        loadDefaultData()
-                        return
-                    }
+                    val body = response.body()!!
 
-                    updateUI(body)
+                    if (body.status == "success" || body.status == null) {
+                        val profileData = body.getActualData()
+                        updateUIWithServerData(profileData)
+                    } else {
+                        showError(body.message ?: "프로필 로드 실패")
+                        loadDummyDataAsFallback()
+                    }
                 }
 
                 override fun onFailure(call: Call<ProfileResponse>, t: Throwable) {
                     showError("네트워크 오류: ${t.message}")
-                    loadDefaultData()
+                    loadDummyDataAsFallback()
                 }
             })
     }
 
-    private fun updateUIWithDummyData(user: DummyUser) {
-        // nickname 사용 (더미 데이터)
-        tvUsername.text = user.nickname
-        tvProfileInitial.text = user.nickname.firstOrNull()?.toString() ?: "?"
-
-        tvTotalDays.text = "${user.totalDays}일"
-        tvTotalKcal.text = "${formatNumber(user.totalCalorie)}kcal"  // ✅ kcal 추가
-        tvTotalPunch.text = "${formatNumber(user.totalPunch)}회"
-    }
-
-    private fun updateUI(data: ProfileResponse) {
-        // 서버에서 받은 name 사용
+    private fun updateUIWithServerData(data: ProfileData) {
         tvUsername.text = data.name
         tvProfileInitial.text = data.name.firstOrNull()?.toString() ?: "?"
 
         tvTotalDays.text = "${data.totalDays}일"
-        tvTotalKcal.text = "${formatNumber(data.totalKcal)}kcal"  // ✅ kcal 추가
+        tvTotalKcal.text = "${formatNumber(data.totalKcal)}kcal"
         tvTotalPunch.text = "${formatNumber(data.totalPunch)}회"
+    }
+
+    private fun loadDummyDataAsFallback() {
+        val currentUser = DummyUserStore.currentUser
+        if (currentUser != null) {
+            tvUsername.text = currentUser.nickname
+            tvProfileInitial.text = currentUser.nickname.firstOrNull()?.toString() ?: "?"
+
+            tvTotalDays.text = "${currentUser.totalDays}일"
+            tvTotalKcal.text = "${formatNumber(currentUser.totalCalorie)}kcal"
+            tvTotalPunch.text = "${formatNumber(currentUser.totalPunch)}회"
+
+            Toast.makeText(requireContext(), "서버 연결 실패 - 임시 데이터 사용", Toast.LENGTH_SHORT).show()
+        } else {
+            loadDefaultData()
+        }
     }
 
     private fun loadDefaultData() {
@@ -112,7 +118,7 @@ class ProfileFragment : Fragment() {
         tvProfileInitial.text = username.firstOrNull()?.toString() ?: "?"
 
         tvTotalDays.text = "0일"
-        tvTotalKcal.text = "0kcal"  // ✅ kcal 추가
+        tvTotalKcal.text = "0kcal"
         tvTotalPunch.text = "0회"
     }
 
