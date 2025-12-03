@@ -85,6 +85,7 @@ class LoginActivity : AppCompatActivity() {
                             pw = pw,
                             nickname = body.name ?: "사용자",  // 서버의 name 필드 사용
                             weight = 70,  // 기본값 (서버에서 weight를 주지 않으면)
+                            height = 175.0f,
                             totalCalorie = 0,
                             totalPunch = 0,
                             totalDays = 0

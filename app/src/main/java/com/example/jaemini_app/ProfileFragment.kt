@@ -92,7 +92,7 @@ class ProfileFragment : Fragment() {
         tvProfileInitial.text = user.nickname.firstOrNull()?.toString() ?: "?"
 
         tvTotalDays.text = "${user.totalDays}일"
-        tvTotalKcal.text = formatNumber(user.totalCalorie)
+        tvTotalKcal.text = "${formatNumber(user.totalCalorie)}kcal"  // ✅ kcal 추가
         tvTotalPunch.text = "${formatNumber(user.totalPunch)}회"
     }
 
@@ -102,7 +102,7 @@ class ProfileFragment : Fragment() {
         tvProfileInitial.text = data.name.firstOrNull()?.toString() ?: "?"
 
         tvTotalDays.text = "${data.totalDays}일"
-        tvTotalKcal.text = formatNumber(data.totalKcal)
+        tvTotalKcal.text = "${formatNumber(data.totalKcal)}kcal"  // ✅ kcal 추가
         tvTotalPunch.text = "${formatNumber(data.totalPunch)}회"
     }
 
@@ -112,7 +112,7 @@ class ProfileFragment : Fragment() {
         tvProfileInitial.text = username.firstOrNull()?.toString() ?: "?"
 
         tvTotalDays.text = "0일"
-        tvTotalKcal.text = "0"
+        tvTotalKcal.text = "0kcal"  // ✅ kcal 추가
         tvTotalPunch.text = "0회"
     }
 

@@ -78,7 +78,7 @@
                 android:id="@+id/tv_calorie"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="000"
+                android:text="000kcal"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -98,16 +98,16 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🥊 펀치횟수"
+                android:text="💪 키"
                 android:textColor="#FFFFFF"
-                android:textSize="15sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_punch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="000"
+                android:text="000cm"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -136,7 +136,7 @@
                 android:id="@+id/tv_weight"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="000"
+                android:text="000kg"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold" />

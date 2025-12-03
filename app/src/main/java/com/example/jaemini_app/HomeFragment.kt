@@ -15,6 +15,9 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.ValueFormatter
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class HomeFragment : Fragment() {
 
@@ -26,7 +29,7 @@ class HomeFragment : Fragment() {
 
     // 통계 TextView들
     private lateinit var tvCalorie: TextView
-    private lateinit var tvPunch: TextView
+    private lateinit var tvPunch: TextView  // 이제 키로 표시
     private lateinit var tvWeight: TextView
 
     private var currentTabType: TabType = TabType.CALORIE
@@ -60,7 +63,7 @@ class HomeFragment : Fragment() {
         graphContainer = view.findViewById(R.id.graph_container)
 
         tvCalorie = view.findViewById(R.id.tv_calorie)
-        tvPunch = view.findViewById(R.id.tv_punch)
+        tvPunch = view.findViewById(R.id.tv_punch)  // 키 데이터
         tvWeight = view.findViewById(R.id.tv_weight)
     }
 
@@ -99,12 +102,68 @@ class HomeFragment : Fragment() {
     }
 
     private fun loadHomeData() {
-        // 지금은 임시 데이터
-        tvCalorie.text = "520"
-        tvPunch.text = "350"
-        tvWeight.text = "72kg"
+        // 더미 유저가 있으면 우선 사용
+        val currentUser = DummyUserStore.currentUser
+        if (currentUser != null) {
+            updateUIWithDummyData(currentUser)
+            loadGraphData(TabType.CALORIE)
+            return
+        }
 
-        loadGraphData(TabType.CALORIE)
+        // 서버에서 데이터 가져오기
+        RetrofitClient.api.getProfile()
+            .enqueue(object : Callback<ProfileResponse> {
+                override fun onResponse(
+                    call: Call<ProfileResponse>,
+                    response: Response<ProfileResponse>
+                ) {
+                    if (response.isSuccessful && response.body() != null) {
+                        val data = response.body()!!
+                        updateUIWithServerData(data)
+                    } else {
+                        // 실패 시 기본값
+                        setDefaultValues()
+                    }
+                    loadGraphData(TabType.CALORIE)
+                }
+
+                override fun onFailure(call: Call<ProfileResponse>, t: Throwable) {
+                    // 네트워크 실패 시 기본값
+                    setDefaultValues()
+                    loadGraphData(TabType.CALORIE)
+                }
+            })
+    }
+
+    private fun updateUIWithDummyData(user: DummyUser) {
+        // 칼로리: 총 칼로리 표시
+        tvCalorie.text = "${user.totalCalorie}kcal"
+
+        // 키: height가 있으면 표시, 없으면 기본값
+        val height = user.height ?: 170.0f
+        tvPunch.text = "${height.toInt()}cm"
+
+        // 체중
+        tvWeight.text = "${user.weight}kg"
+    }
+
+    private fun updateUIWithServerData(data: ProfileResponse) {
+        // 칼로리
+        tvCalorie.text = "${data.totalKcal}kcal"
+
+        // 키: 서버에서 height 데이터 사용
+        val height = data.height ?: 170.0f
+        tvPunch.text = "${height.toInt()}cm"
+
+        // 체중
+        val weight = data.weight ?: 70.0f
+        tvWeight.text = "${weight.toInt()}kg"
+    }
+
+    private fun setDefaultValues() {
+        tvCalorie.text = "0kcal"
+        tvPunch.text = "170cm"
+        tvWeight.text = "70kg"
     }
 
     private fun loadGraphData(type: TabType) {

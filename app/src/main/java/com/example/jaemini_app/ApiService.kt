@@ -8,23 +8,22 @@ import retrofit2.http.Path
 
 interface ApiService {
 
-    // 로그인 API
-    @POST("login")
+    @POST("api/users/login")
     fun login(@Body request: LoginRequest): Call<LoginResponse>
 
-    // 랭킹 API
-    @GET("ranking")
+    @GET("api/rankings")
     fun getRanking(): Call<RankingResponse>
 
-    // 프로필 API
-    @GET("profile")
+    @GET("api/users/profile")
     fun getProfile(): Call<ProfileResponse>
 
-    // 홈 데이터 API
-    @GET("home")
+    // ✅ 추가: 상위 % 데이터
+    @GET("api/users/rank")
+    fun getUserRank(): Call<RankDataResponse>
+
+    @GET("api/sessions/current")
     fun getHomeData(): Call<HomeResponse>
 
-    // 그래프 데이터 API
-    @GET("{endpoint}")
+    @GET("api/{endpoint}")
     fun getGraphData(@Path("endpoint") endpoint: String): Call<GraphResponse>
 }
